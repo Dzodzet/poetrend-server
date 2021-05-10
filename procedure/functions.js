@@ -17,12 +17,11 @@ async function ladderLoop(minRank, maxRank, league) {
     
     // Request loop
     for (j = 0; j < numberOfBulkToRun; j++) { // J = BULK
-        console.log("**********  In bulk #", j + 1, ' out of ', Math.trunc((numberOfRequestsToRun - 1) / 5) + 1, " **********")
+        console.log(`********** In bulk #${j+1} out of ${numberOfBulkToRun} **********`)
         let promiseArray = []
         let requestsLeft = 5
-        let t1 = new Date().getTime();
         for (i; i < numberOfRequestsToRun; i++) { // I = REQUEST
-            if (requestsLeft === 0) { break; }
+            if (requestsLeft === 0) { var t1 = new Date().getTime(); break; }
             console.log('Request #', i + 1, "/", numberOfRequestsToRun);
             params = {
                 league,
@@ -32,12 +31,13 @@ async function ladderLoop(minRank, maxRank, league) {
             promiseArray = promiseArray.concat(getJSONLadder(params));
             requestsLeft--;
         }
+        
         let bulkData = await Promise.all(promiseArray).then(data => data.flat());
         JSONladder.push(bulkData);
 
         var t2 = new Date().getTime()
         if (j + 1 !== numberOfBulkToRun) {
-            let timeToSleep = Math.max(0, 5000 - (t2 - t1))
+            let timeToSleep = Math.max(0, 5500 - (t2 - t1))
             console.log('Took ', t2 - t1, ' ms. Sleeping for ', timeToSleep, ' ms');
             await sleep(timeToSleep);
         }
@@ -61,7 +61,7 @@ function getJSONLadder(params) {
             if ("cached_since" in ladderpage) {
                 let csince = ladderpage.cached_since;
                 let characters = ladderpage.entries;
-                characters.entries.cached_since = csince;
+                for (char of characters) { char.cached_since = csince };
                 resolve(characters);
             } else {
                 resolve([]);

@@ -1,20 +1,15 @@
-const { ladderLoop, getJSONchar } = require('./functions')
+// Imports
 
 const moment = require('moment');
+const { ladderLoop, getJSONchar } = require('./functions')
+const { Character, Skill } = require('../sql.js')
 
-var mysql = require('mysql');
 
-var con = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "root",
-    database: "poetrend2"
-});
+// PARAMS
 
-// params
-
-const minRank = 1
-const maxRank = 150
+const minRank = 1000
+const maxRank = 5000
+const league = "SSF Ultimatum HC"
 const excludedSkills = ['Spellslinger Support', 'Pride', 'Blood Rage', 'Portal', 'Berserk', 'Precision',
     'Punishment', 'Grace', 'Vitality', 'Discipline']
 const excludedSkillTags = ['Movement', 'Guard', 'Stance', 'Warcry', 'Curse']
@@ -28,7 +23,7 @@ function sleep(ms) {
 }
 
 async function getSkills(charName, accName) {
-    let skills = []
+    let skills = [] // response array
 
     // extract character sheet
     char = await getJSONchar(charName, accName);
@@ -40,7 +35,7 @@ async function getSkills(charName, accName) {
     }
 
     // get itemlists
-    let items = char.items
+    let items = char.items ? char.items : []
 
     // Next char if no item equiped
     if (!items.length) {
@@ -107,19 +102,33 @@ async function getSkills(charName, accName) {
 
 
 async function main() {
-    let JSONladder = []
+    
+    let JSONladder = await ladderLoop(minRank, maxRank, league)
+    
+    const chars = []
+    for (char of JSONladder) {
+        chars.push({
+            charID: char.character.id,
+            charName: char.character.name,
+            accName: char.account.name,
+            league: league,
+        })
+    }
+    
+    await Character.bulkCreate(chars, { ignoreDuplicates: true }).catch(err => console.log(err))
 
-    // ladder extraction loop (JSON)
-    JSONladder = await ladderLoop(minRank, maxRank, "SSF Ritual HC")
 
     // Filter out => dead, private, retired
     JSONladder = Object.values(JSONladder).filter(x => x.dead === false && x.public === true && !(x.retired === true));
-    let numberOfChars = JSONladder.length
+    const numberOfChars = JSONladder.length
+
+
     // await skills loop
     for (let [index, char] of JSONladder.entries()) {
-        console.log(index + 1, " / ", numberOfChars)
+        console.log(index + 1, " / ", numberOfChars);
         let start = new Date().getTime();
         char.character.skills = await getSkills(char.character.name, char.account.name);
+
         let end = new Date().getTime();
         await sleep(1334 - (end - start));
         console.log(char.character.skills);
@@ -135,39 +144,20 @@ async function main() {
 
     console.log(linkDict, " -> linkDict")
 
-    // TO DO -> exporter le linkdict to links.json
-    // const fs = require('fs')
-    // // convert JSON object to string
-    // const data = JSON.stringify(linkDict);
-
-    // write JSON string to a file
-    // fs.writeFile('links.json', data, (err) => {
-    // if (err) {
-    //     throw err;
-    // }
-    // console.log("JSON data is saved.");
-    // });
-
-
-
     var inserts = [];
+
     JSONladder.forEach(char =>
 
         char.character.skills.map(skill => {
-            return inserts.push([char.character.id, skill.toString(), moment(Date.now()).format('YYYY-MM-DD HH:mm:ss')]);
-        })
-        //inserts.push([char.character.id, char.character.skills.toString(), moment(Date.now()).format('YYYY-MM-DD HH:mm:ss')])
-    );
-    //console.log(inserts, 'inserts');
-    // build query loop
-    queryy =
-        `REPLACE INTO SKILLS
-    (CHARID, SKILL, ATTIME) 
-    VALUES ?`
-    con.query({ sql: queryy, values: [inserts] }, function (err, result) {
-        if (err) throw err;
-        console.log(result);
-    });
+            return inserts.push({
+                CharacterCharID: char.character.id,
+                skillName: skill.toString(),
+                attime: moment(Date.now()).format('YYYY-MM-DD HH:mm:ss'),
+            }
+            )
+        }));
+
+    const x = await Skill.bulkCreate(inserts);
 
 }
 
