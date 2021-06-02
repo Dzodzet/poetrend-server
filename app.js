@@ -28,6 +28,25 @@ app.get('/api/skills', (req, res) => {
   });
 });
 
+app.get('/api/sdr', (req, res) => {
+  console.log("/api/sdr params = ", req.query)
+  params = {
+    league: req.query.league,
+    nbDaysHist: req.query.nbDaysHist,
+  }
+  ctrl.getSdr(params, retour => {
+      res.status(retour.code).send(retour);
+  });
+});
+
+app.get('/api/getDetail', (req, res) => {
+  console.log("/api/getDetail char = ", req.query[0])
+
+  ctrl.getDetail(req.query[0], retour => {
+      res.status(retour.code).send(retour);
+  });
+});
+
 
 const port = 8081
 const server = app.listen(port, () => {

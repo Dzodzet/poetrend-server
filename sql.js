@@ -1,10 +1,10 @@
 const { Sequelize, DataTypes, Op } = require('sequelize');
 
-const sequelize = new Sequelize("poetrenddb", "root", "root", {
+const sequelize = new Sequelize("poetrenddb2", "root", "root", {
     host: "localhost",
     dialect: "mysql",
     port: 3306,
-    logging:false,
+    logging: false,
 });
 
 
@@ -16,10 +16,19 @@ const Character = sequelize.define('Character', {
 },
     { timestamps: false });
 
+const State = sequelize.define('State', {
+    nbSkills: { type: DataTypes.TINYINT },
+    statetime: { type: DataTypes.DATE },
+},
+    { timestamps: false });
+
+
 const Skill = sequelize.define('Skill', {
     //charID: { type: DataTypes.STRING, references : { model: Character, key: 'charID' } },
     skillName: { type: DataTypes.STRING(50) },
-    attime: { type: DataTypes.DATE },
+    type: { type: DataTypes.STRING(50) },
+    nblinks: { type: DataTypes.TINYINT },
+    priority: { type: DataTypes.TINYINT },
 },
     { timestamps: false });
 
@@ -40,21 +49,25 @@ const Activity = sequelize.define('Activity', {
     endtime: { type: DataTypes.DATE },
     deltaxp: { type: DataTypes.INTEGER },
     xph: { type: DataTypes.FLOAT },
-    CharacterCharID: { type: DataTypes.STRING, unique: 'combo', references : { model: Character, key: 'charID' } },
+    xp: { type: DataTypes.INTEGER.UNSIGNED },
+    lvl: { type: DataTypes.TINYINT },
+    CharacterCharID: { type: DataTypes.STRING, unique: 'combo', references: { model: Character, key: 'charID' } },
 }
     , { timestamps: false });
 
-const Activity_Skill = sequelize.define('Activity_Skill', {}, { timestamps: false });
 
-Character.hasMany(Skill);
-Skill.belongsTo(Character);
+
+Character.hasMany(State);
+State.belongsTo(Character);
+
+State.hasMany(Skill);
+Skill.belongsTo(State);
 
 Character.hasMany(Frozen);
 Frozen.belongsTo(Character);
 
-Activity.belongsToMany(Skill, { through: 'Activity_Skill' });
-Skill.belongsToMany(Activity, { through: 'Activity_Skill' })
-
+State.hasMany(Activity);
+Activity.belongsTo(State);
 
 const testConnection = async () => {
 
@@ -64,7 +77,7 @@ const testConnection = async () => {
     } catch (error) {
         console.error('Unable to connect to the database:', error);
     }
-    await sequelize.sync({alter:false}).then(console.log('synced'));
+    await sequelize.sync({ force: false }).then(console.log('synced'));
     // await sequelize.query('show tables').then(function (rows) {
     //     console.log('list of tables => ', JSON.stringify(rows));
     // });
@@ -79,7 +92,8 @@ module.exports = {
     Character,
     Skill,
     Frozen,
-    Activity
+    Activity,
+    State,
 };
 
 

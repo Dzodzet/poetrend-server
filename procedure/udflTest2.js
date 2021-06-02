@@ -1,7 +1,7 @@
 // Imports
 
 const { ladderLoop } = require('./functions')
-const { testConnection, Character, Frozen, Activity, Skill } = require('../sql.js')
+const { testConnection, Character, Frozen, Activity, Skill, State } = require('../sql.js')
 const { Op } = require('sequelize')
 
 
@@ -101,38 +101,37 @@ async function main() {
         console.timeEnd('create bulk activity')
 
         // Link Activity with Skill
-        console.time('link act with skills')
+        console.time('link act with state')
         let activities = await Activity.findAll({
             include: [
-                { model: Skill, required: false },
+                { model: State, required: false },
             ],
             where: {
                 starttime: { [Op.gt]: new Date(new Date() - updateRangeInDays * 24 * 60 * 60 * 1000) },
-                '$skills.skillName$': { [Op.eq]: null }
             },
         })
         //console.log(JSON.stringify(activities[0],null,4))
         
-        let skills = await Skill.findAll()
+        let states = await State.findAll()
 
         for (a of activities) {
             // keep only matching char ID
-            let skillsfiltered = skills.filter(s => s.CharacterCharID === a.CharacterCharID && s.attime < a.starttime)
+            let filteredStates = states.filter(s => s.CharacterCharID === a.CharacterCharID && s.statetime < a.starttime)
 
-            if (skillsfiltered.length == 0) {
+            if (filteredStates.length == 0) {
                 continue;
             } 
-            let mat = skillsfiltered.reduce((a, b) => (a.starttime > b.starttime ? a : b)).attime
+            let mat = filteredStates.reduce((a, b) => (a.starttime > b.starttime ? a : b)).statetime
             
-            skillsfiltered = skillsfiltered.filter(s => {
-                return s.attime - mat == 0
+            filteredStates = filteredStates.filter(s => {
+                return s.statetime - mat == 0
             })
-            for (s of skillsfiltered) {
-                await a.addSkill(s)
+            for (s of filteredStates) {
+                await s.addActivity(a)
             }
 
         }
-        console.timeEnd('link act with skills')
+        console.timeEnd('link act with state')
         
     }
 

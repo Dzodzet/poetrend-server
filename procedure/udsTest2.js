@@ -2,19 +2,28 @@
 
 const moment = require('moment');
 const { ladderLoop, getJSONchar } = require('./functions')
-const { Character, Skill } = require('../sql.js')
+const { Character, Skill, State } = require('../sql.js')
 
 
 // PARAMS
 
-const minRank = 9
-const maxRank = 20
+const minRank = 5001
+const maxRank = 5200
 const league = "SSF Ultimatum HC"
-const excludedSkills = ['Spellslinger Support', 'Pride', 'Blood Rage', 'Portal', 'Berserk', 'Precision',
-    'Punishment', 'Grace', 'Vitality', 'Discipline']
-const excludedSkillTags = ['Movement', 'Guard', 'Stance', 'Warcry', 'Curse', 'Aura']
+const excludedSkills = [
+    'Spellslinger Support',
+    'Pride',
+    'Blood Rage',
+    'Portal',
+    'Berserk',
+    'Precision',
+    'Punishment',
+    'Grace',
+    'Vitality',
+    'Vigilant Strike'
+]
+const excludedSkillTags = ['Guard', 'Stance', 'Warcry', 'Curse', 'Aura', 'Travel']
 
-var links = [];
 
 function sleep(ms) {
     return new Promise((resolve) => {
@@ -23,8 +32,16 @@ function sleep(ms) {
 }
 
 async function getSkills(charName, accName) {
-    let skills = [] // response array
-
+    /*
+    Responde with an array of preformated skills object :
+    {
+        name,
+        type,
+        nblinks,
+        priority:1,
+    }
+    */
+    let skills = []
     // extract character sheet
     const char = await getJSONchar(charName, accName);
 
@@ -48,25 +65,15 @@ async function getSkills(charName, accName) {
 
     //console.dir(items[0], {depth: null})
 
+    for (item of items) { // Loop over equiped items that have 4+ socketed gems
 
-
-    for (item of items) {
         // number of support items
-        let isSpellslinger = false;
-        for (i of item.socketedItems) {
-            if (i.typeLine == 'Spellslinger Support') {
-                console.log('spellslinger support detected')
-                isSpellslinger = true
-            } 
-        }
         if (item.socketedItems.filter((sitem) => sitem.support == true).length < 2) {
-            console.log('too few supports gems => next item')
+            //console.log('too few supports gems => next item')
             continue
         }
 
-        // Filter 5+linked skill gems !! (bad)
-
-        //console.dir(item, {depth:null})
+        // Filter linkedSocketed gems in an array "linkedSocketedItems"
         const findCorrectSocketGroup = (sockets) => {
             const linkArray = sockets.reduce((res, socket) => {
                 const group = socket.group
@@ -93,14 +100,38 @@ async function getSkills(charName, accName) {
             return res
         }
 
-        let filteredLinkedSocketedItems = linkedSocketedItems.filter((sitem) =>
+        // skill type of link group
+        let type = 'Normal'
+        for (i of linkedSocketedItems) {
+            if (i.typeLine == 'Spellslinger Support') {
+                console.log('spellslinger support detected')
+                type = 'Spellslinger'
+            }
+            if (i.typeLine == 'Spell Totem Support') {
+                console.log('Spell Totem Support detected')
+                type = 'Totem'
+            }
+            if (i.typeLine == 'Blastchain Mine Support') {
+                console.log('Blastchain Mine Support detected')
+                type = 'Mine'
+            }
+            if (i.typeLine == 'Trap Support') {
+                console.log('Trap Support detected')
+                type = 'Trap'
+            }
+
+        }
+
+
+        const nblinks = linkedSocketedItems.length
+
+        // filter only active skills
+        const filteredLinkedSocketedItems = linkedSocketedItems.filter((sitem) =>
             sitem.support == false // Supports out
             && !(tagFilter(sitem.properties[0].name)) // contains wrong tag
-            && parseInt(sitem.properties[1].values[0][0].substring(0, 2)) > 14 // level too low
+            && parseInt(sitem.properties[1].values[0][0].substring(0, 2)) > 10 // level too low
+            && !excludedSkills.includes(sitem.typeLine.replace('Vaal ', ''))
         );
-        // const nbSupportGems = item.socketedItems.filter((sitem) =>
-        //     sitem.support == true // Supports out
-        // ).length
 
         // Detect leveling weapon by multiple linked same gems
         let skillFreqInItem = filteredLinkedSocketedItems.reduce((o, n) => {
@@ -114,16 +145,41 @@ async function getSkills(charName, accName) {
         if (item.inventoryId == 'Weapon2') console.log(" Carefull, weapon 2 slot and passed the test !")
 
         // Harvest skill gem names
+
         filteredLinkedSocketedItems.forEach(sitem => {
-            let name = sitem.typeLine.replace('Vaal ', '');
-
-            if (!excludedSkills.includes(name)) {
-                skills.push(name);
-            }
-            links.push({ name, icon: sitem.icon });
-        });
-
+            skills.push({
+                skillName: sitem.typeLine.replace('Vaal ', ''),
+                type,
+                nblinks,
+                priority: 1
+            })
+        })
     }
+
+
+    /*
+     * Priority
+     */
+    const prioritySkills = ['Essence Drain', 'Exsanguinate', 'Puncture', 'Raise Spectre', 'Corrupting Fever']
+    const badSkills = ['Bone offering', 'Frenzy', 'Cyclone']
+
+    if (skills.length > 1) {
+        let nbMaxLinks = Math.max(...skills.map(s => s.nblinks))
+        skills.forEach(skill => { if (skill.nblinks < nbMaxLinks) { skill.priority += 2 } })
+        if (skills.filter(skill => skill.priority == 1).length > 1) {
+            // multiple #1 Priority
+            if (skills.some(r => {console.log(r.skillName);return prioritySkills.includes(r.skillName);})) {
+                console.log('#1')
+                skills.forEach(skill => {if (!prioritySkills.includes(skill.skillName)) { skill.priority += 1 }})
+            }
+            if (skills.some(r=> badSkills.includes(r.skillName))) {
+                console.log('#2')
+                skills.forEach(skill => {if (badSkills.includes(skill.skillName)) { skill.priority += 1 }})
+            }
+            if (skills.filter(skill => skill.priority == 1).length > 1) console.error('multiple #1 Priority', 40404040404040404)
+        }
+    }
+    console.log(skills)
     return skills
 }
 
@@ -167,52 +223,36 @@ async function main() {
     await Character.bulkCreate(chars, { ignoreDuplicates: true }).then(console.log('Character.bulkCreate ok')).catch(err => console.log(err))
 
     // Filter out => dead, private, retired
-    JSONladder = Object.values(JSONladder).filter(x => x.dead === false && x.public === true && !(x.retired === true));
+    const charsToAnalyse = Object.values(JSONladder).filter(x => x.dead === false && x.public === true && !(x.retired === true));
 
     // add Skills property to JSONladder entries
-    const numberOfChars = JSONladder.length
-    for (let [index, char] of JSONladder.entries()) {
-        console.log(`${index + 1} / ${numberOfChars}`);
+    const numberOfCharsToAnalyse = charsToAnalyse.length
+
+    const stateToInput = []
+    for ([index, char] of charsToAnalyse.entries()) {
+        console.log(`${index + 1} / ${numberOfCharsToAnalyse}`)
         let start = new Date().getTime();
-        char.character.skills = await getSkills(char.character.name, char.account.name);
+        let skills = await getSkills(char.character.name, char.account.name)
         let end = new Date().getTime();
         await sleep(1334 - (end - start));
-        console.log(char.character.skills);
+        stateToInput.push({
+            CharacterCharID: char.character.id,
+            statetime: moment(Date.now()).format('YYYY-MM-DD HH:mm:ss'),
+            Skills: skills,
+        })
     }
 
-    // get icons...
-    var linkDict = {}
-    links.map(link => {
-        return linkDict[link.name] = link.icon;
+
+
+
+
+    let x = await State.bulkCreate(stateToInput, {
+        include: [Skill]
     })
-
-
-    var inserts = []
-    JSONladder.forEach(char =>
-        char.character.skills.map(skill => {
-            return inserts.push({
-                CharacterCharID: char.character.id,
-                skillName: skill.toString(),
-                attime: moment(Date.now()).format('YYYY-MM-DD HH:mm:ss'),
-            }
-            )
-        }));
-
-    const x = await Skill.bulkCreate(inserts);
-
+    console.log(x.length, ' added this many states')
 }
 
 
 
 main();
 
-
-
-
-// get existing data
-
-
-// compare ladder with existing data
-// if empty skill || too old => 
-    // update skill function
-    // update sql data or add sql data
