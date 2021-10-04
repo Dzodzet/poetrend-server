@@ -1,21 +1,17 @@
 // Imports
 
 const { ladderLoop } = require('./functions')
-const { testConnection, Character, Frozen, Activity, Skill, State } = require('../sql.js')
+const { testConnection, Character, Frozen, Activity, Skill, State } = require('../../sql.js')
 const { Op } = require('sequelize')
 
 
 // PARAMS
-
-const minRank = 1
-const maxRank = 5000
-const league = "SSF Ultimatum HC"
 const updateRangeInDays = 1/24*31/60
 const DELTAMINMIN = 1
 const DELTAMINMAX = 20
 
 
-async function main() {
+async function updateFrozenList(league, minRank, maxRank) {
 
     if (maxRank < minRank | maxRank > 15000) { console.log("Invalid arguments"); return; }
 
@@ -75,8 +71,8 @@ async function main() {
         if (frozenData[i].CharacterCharID === frozenData[i + 1].CharacterCharID) {
             let active = frozenData[i]
             let active2 = frozenData[i + 1]
-
-            let deltaMin = (active2.attime - active.attime) / 1000 / 60
+            //console.log(new Date(active2.attime) - new Date(active.attime))
+            let deltaMin = (new Date(active2.attime) - new Date(active.attime)) / 1000 / 60
             let deltaxp = active2.xp - active.xp
 
             if (deltaMin < DELTAMINMAX && deltaMin > DELTAMINMIN && deltaxp > 1000) {
@@ -94,7 +90,7 @@ async function main() {
     }
     console.timeEnd('building activeArray')
 
-    console.log('Adding ', activeArray.length, ' new activities')
+    //console.log(activeArray, 'activearray1')
     if (activeArray.length > 0) {
         console.time('create bulk activity')
         await Activity.bulkCreate(activeArray, {ignoreDuplicates: true,})//updateOnDuplicate: ["xp", "lvl"]
@@ -138,4 +134,6 @@ async function main() {
 }
 
 
-main();
+module.exports = {
+    updateFrozenList
+}

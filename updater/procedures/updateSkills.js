@@ -2,14 +2,12 @@
 
 const moment = require('moment');
 const { ladderLoop, getJSONchar } = require('./functions')
-const { Character, Skill, State } = require('../sql.js')
+const { Character, Skill, State } = require('../../sql.js')
 
 
 // PARAMS
 
-const minRank = 5001
-const maxRank = 5200
-const league = "SSF Ultimatum HC"
+
 const excludedSkills = [
     'Spellslinger Support',
     'Pride',
@@ -179,12 +177,12 @@ async function getSkills(charName, accName) {
             if (skills.filter(skill => skill.priority == 1).length > 1) console.error('multiple #1 Priority', 40404040404040404)
         }
     }
-    console.log(skills)
+    //console.log(skills)
     return skills
 }
 
 
-async function main() {
+async function updateSkills(league, minRank, maxRank) {
     // extract ladder
     let JSONladder = await ladderLoop(minRank, maxRank, league)
 
@@ -238,6 +236,7 @@ async function main() {
         stateToInput.push({
             CharacterCharID: char.character.id,
             statetime: moment(Date.now()).format('YYYY-MM-DD HH:mm:ss'),
+            nbSkills: skills.length,
             Skills: skills,
         })
     }
@@ -254,5 +253,7 @@ async function main() {
 
 
 
-main();
+module.exports = {
+    updateSkills
+}
 

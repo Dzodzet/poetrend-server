@@ -14,10 +14,10 @@ async function ladderLoop(minRank, maxRank, league) {
     let params = {}
     let numberOfRequestsToRun = Math.trunc((maxRank - minRank) / 200) + 1
     let numberOfBulkToRun = Math.trunc((numberOfRequestsToRun - 1) / 5) + 1
-    
+
     // Request loop
     for (j = 0; j < numberOfBulkToRun; j++) { // J = BULK
-        console.log(`********** In bulk #${j+1} out of ${numberOfBulkToRun} **********`)
+        console.log(`********** In bulk #${j + 1} out of ${numberOfBulkToRun} **********`)
         let promiseArray = []
         let requestsLeft = 5
         for (i; i < numberOfRequestsToRun; i++) { // I = REQUEST
@@ -31,8 +31,14 @@ async function ladderLoop(minRank, maxRank, league) {
             promiseArray = promiseArray.concat(getJSONLadder(params));
             requestsLeft--;
         }
-        
-        let bulkData = await Promise.all(promiseArray).then(data => data.flat());
+
+        let bulkData = await Promise.all(promiseArray).then(data => data.flat()).catch(reason => { 
+            console.log(reason)
+            const fs = require('fs');
+            fs.writeFile("./errorlog.txt", JSON.stringify(reason), function(err) {console.log(err)})
+            return
+         });
+        if (!bulkData) break
         JSONladder.push(bulkData);
 
         var t2 = new Date().getTime()
@@ -50,7 +56,7 @@ async function ladderLoop(minRank, maxRank, league) {
 function getJSONLadder(params) {
     const base_url = "https://api.pathofexile.com/ladders/"
     let url = encodeURI(base_url + params.league + "?offset=" + params.offset + "&limit=" + params.limit);
-    //console.log(url);
+    console.log(url);
     return new Promise((resolve, reject) => {
         request(url, (error, response, body) => {
             if (error) reject(error);

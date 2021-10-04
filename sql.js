@@ -1,11 +1,17 @@
 const { Sequelize, DataTypes, Op } = require('sequelize');
 
-const sequelize = new Sequelize("poetrenddb2", "root", "root", {
-    host: "localhost",
-    dialect: "mysql",
-    port: 3306,
-    logging: false,
-});
+// const sequelize = new Sequelize("poetrenddb2", "root", "root", {
+//     host: "localhost",
+//     dialect: "mysql",
+//     port: 3306,
+//     logging: false,
+// });
+
+const sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: 'db.sqlite',
+    logging: false
+})
 
 
 const Character = sequelize.define('Character', {
@@ -84,7 +90,7 @@ const testConnection = async () => {
 
 }
 
-//testConnection();
+testConnection();
 
 module.exports = {
     sequelize,

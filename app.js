@@ -15,7 +15,7 @@ app.use(cors());
 
 
 app.get('/api/skills', (req, res) => {
-  console.log("/api/skills params = ", req.query)
+  //console.log("/api/skills params = ", req.query)
   skillOrder = {
     league: req.query.league,
     starttime: req.query.timeInDays*24,
@@ -29,7 +29,7 @@ app.get('/api/skills', (req, res) => {
 });
 
 app.get('/api/sdr', (req, res) => {
-  console.log("/api/sdr params = ", req.query)
+  //console.log("/api/sdr params = ", req.query)
   params = {
     league: req.query.league,
     nbDaysHist: req.query.nbDaysHist,
@@ -40,8 +40,7 @@ app.get('/api/sdr', (req, res) => {
 });
 
 app.get('/api/getDetail', (req, res) => {
-  console.log("/api/getDetail char = ", req.query[0])
-
+  //console.log("/api/getDetail char = ", req.query[0])
   ctrl.getDetail(req.query[0], retour => {
       res.status(retour.code).send(retour);
   });
