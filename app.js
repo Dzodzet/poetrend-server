@@ -15,7 +15,7 @@ app.use(cors());
 
 
 app.get('/api/skills', (req, res) => {
-  //console.log("/api/skills params = ", req.query)
+  console.log("/api/skills params = ", req.query)
   skillOrder = {
     league: req.query.league,
     starttime: req.query.timeInDays*24,
@@ -23,6 +23,10 @@ app.get('/api/skills', (req, res) => {
     minlvl: 80,
     maxlvl: 100
   }
+  // console.log(!req.query.league)
+  // if (!req.query.league) {
+  //   res.send("no data");
+  // } else {
   ctrl.getSkills(skillOrder, retour => {
       res.status(retour.code).send(retour);
   });

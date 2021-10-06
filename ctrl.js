@@ -35,6 +35,7 @@ const getSkills = async (skillOrder, callback) => {
 
     // variables
     const nbDays = skillOrder.starttime * 2 / 24
+    console.log(nbDays)
     const requestDateTime = new Date()
 
     // 1sql query
@@ -112,7 +113,7 @@ const getSkills = async (skillOrder, callback) => {
         skillObj.deltaRatio = skillObj.freqT1Ratio - skillObj.freqT2Ratio
     })
 
-    let totFreqArray = new Array(nbDays).fill(0)
+    let totFreqArray = new Array(nbDays | 1).fill(0)
     for (i = 0; i < nbDays; i++) {
         res.forEach(e => totFreqArray[i] += e.frequencies[i])
     }
